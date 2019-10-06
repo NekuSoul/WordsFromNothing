@@ -17,7 +17,7 @@ namespace Game.Scripts
 
         private void Awake()
         {
-            _words = textAsset.text.Split(new[] {Environment.NewLine}, StringSplitOptions.None).Where(w => w.Length > 2).ToArray();
+            _words = textAsset.text.Split(new[] {"\r\n"}, StringSplitOptions.None).Where(w => w.Length > 2).ToArray();
         }
 
         public string GetRandomMatchingWord(string pattern, string originalWord, params WordRequirement[] requirements)

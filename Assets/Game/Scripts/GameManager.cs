@@ -17,6 +17,7 @@ namespace Game.Scripts
         public MainMenuPanel mainMenuPanel;
         public HelpPanel helpPanel;
         public AudioManager audioManager;
+        public LineRenderer line;
         public float panSpeed = 0.05f;
 
         private List<CharacterTile> _tiles = new List<CharacterTile>();
@@ -59,8 +60,10 @@ namespace Game.Scripts
 
             if (!_dragging && Input.GetMouseButtonDown(0))
             {
+                line.gameObject.SetActive(true);
                 _dragging = true;
                 _dragStart = cursorPosition;
+                line.SetPosition(0, (Vector3Int) cursorPosition);
             }
 
             if (_dragging)
@@ -68,10 +71,13 @@ namespace Game.Scripts
                 cursorTile.CursorState = cursorPosition.x == _dragStart.x || cursorPosition.y == _dragStart.y
                     ? CursorState.Inserting
                     : CursorState.Invalid;
+                line.gameObject.SetActive(cursorTile.CursorState == CursorState.Inserting);
+                line.SetPosition(1, (Vector3Int) cursorPosition);
             }
 
             if (_dragging && Input.GetMouseButtonUp(0))
             {
+                line.gameObject.SetActive(false);
                 _dragging = false;
                 cursorTile.CursorState = CursorState.Regular;
 
@@ -247,7 +253,7 @@ namespace Game.Scripts
                     audioManager.PlayErrorSound();
                     return;
                 }
-                
+
                 SetWord(word, startPosition, direction);
                 _steps++;
 
