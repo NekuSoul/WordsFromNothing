@@ -6,6 +6,7 @@ namespace Game.Scripts
     public class WinnerPanel : MonoBehaviour
     {
         public Text text;
+        public AudioManager audioManager;
         
         private string originalText = string.Empty;
         
@@ -18,6 +19,7 @@ namespace Game.Scripts
 
         public void Hide()
         {
+            audioManager.PlaySelectSound();
             gameObject.SetActive(false);
         }
     }

@@ -16,6 +16,7 @@ namespace Game.Scripts
         public WinnerPanel winnerPanel;
         public MainMenuPanel mainMenuPanel;
         public HelpPanel helpPanel;
+        public AudioManager audioManager;
         public float panSpeed = 0.05f;
 
         private List<CharacterTile> _tiles = new List<CharacterTile>();
@@ -37,7 +38,10 @@ namespace Game.Scripts
         private void Update()
         {
             if (mainMenuPanel.gameObject.activeSelf || helpPanel.gameObject.activeSelf || winnerPanel.gameObject.activeSelf)
+            {
+                _dragging = false;
                 return;
+            }
 
             HandleCameraDragging();
 
@@ -96,17 +100,15 @@ namespace Game.Scripts
 
                 // Only continue on straight selection line
                 if (direction == WordDirection.None)
+                {
+                    audioManager.PlayErrorSound();
                     return;
-
-                // Require minimum length
-                if (wordLength < 3)
-                    return;
+                }
 
                 var insertPattern = string.Empty;
                 var replacePattern = string.Empty;
                 var insert = false;
                 var currentPosition = startPosition;
-                var originalWord = string.Empty;
                 var originalWordLength = wordLength;
                 var originalStartPosition = startPosition;
 
@@ -131,7 +133,7 @@ namespace Game.Scripts
 
                 // Capture selected tiles
                 currentPosition = originalStartPosition;
-                originalWord = insertPattern;
+                var originalWord = insertPattern;
                 for (var i = 0; i < originalWordLength; i++)
                 {
                     var tile = GetTile(currentPosition);
@@ -230,25 +232,34 @@ namespace Game.Scripts
 
                 var pattern = insert ? insertPattern : replacePattern;
 
-                // Require at least one intersection
-                if (pattern.All(p => p == '.'))
+                // Require at least one intersection and disallow full word replacements
+                if (requirements.Count == 0 && pattern.All(p => p == '.'))
+                {
+                    audioManager.PlayErrorSound();
                     return;
-                
-                Debug.Log(pattern);
+                }
 
                 // Search for a fitting word
                 string word = wordList.GetRandomMatchingWord(pattern, originalWord, requirements.ToArray());
 
                 if (word is null)
+                {
+                    audioManager.PlayErrorSound();
                     return;
-
+                }
+                
                 SetWord(word, startPosition, direction);
                 _steps++;
 
                 if (word == "everything" && !_won)
                 {
+                    audioManager.PlayWinSound();
                     winnerPanel.Show(_steps);
                     _won = true;
+                }
+                else
+                {
+                    audioManager.PlaySuccessSound();
                 }
             }
         }
@@ -307,6 +318,11 @@ namespace Game.Scripts
                     characterTile.Position = currentPosition;
                     characterTile.transform.position = grid.CellToWorld((Vector3Int) currentPosition);
                     _tiles.Add(characterTile);
+                }
+                else
+                {
+                    if (characterTile.Character != character)
+                        characterTile.PlayChangeCharacterAnimation();
                 }
 
                 characterTile.Character = character;

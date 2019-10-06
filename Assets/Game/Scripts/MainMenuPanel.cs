@@ -5,6 +5,7 @@ public class MainMenuPanel : MonoBehaviour
 {
     public GameManager gameManager;
     public HelpPanel helpPanel;
+    public AudioManager audioManager;
     
     public void Show()
     {
@@ -13,6 +14,7 @@ public class MainMenuPanel : MonoBehaviour
 
     public void ShowHelp()
     {
+        audioManager.PlaySelectSound();
         helpPanel.Show();
         Hide();
     }
@@ -24,6 +26,7 @@ public class MainMenuPanel : MonoBehaviour
 
     public void Toggle()
     {
+        audioManager.PlaySelectSound();
         if (gameObject.activeSelf)
             Hide();
         else
@@ -32,12 +35,15 @@ public class MainMenuPanel : MonoBehaviour
 
     public void ResetCamera()
     {
+        audioManager.PlaySelectSound();
         gameManager.ResetCamera();
         Hide();
     }
 
     public void ResetGame()
     {
+        audioManager.PlaySelectSound();
+        gameManager.ResetCamera();
         gameManager.ResetGame();
         Hide();
     }

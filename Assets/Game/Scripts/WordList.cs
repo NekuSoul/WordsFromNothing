@@ -12,12 +12,12 @@ namespace Game.Scripts
     {
         public TextAsset textAsset;
         private string[] _words;
-        private readonly Dictionary<WordRequirement, List<char>> _requirementCache = new Dictionary<WordRequirement, List<char>>();
+        private readonly Dictionary<WordRequirement, List<Tuple<char, bool>>> _requirementCache = new Dictionary<WordRequirement, List<Tuple<char, bool>>>();
         private List<string> _matches = new List<string>();
 
         private void Awake()
         {
-            _words = textAsset.text.Split(new[] {Environment.NewLine}, StringSplitOptions.None);
+            _words = textAsset.text.Split(new[] {Environment.NewLine}, StringSplitOptions.None).Where(w => w.Length > 2).ToArray();
         }
 
         public string GetRandomMatchingWord(string pattern, string originalWord, params WordRequirement[] requirements)
@@ -25,7 +25,7 @@ namespace Game.Scripts
             _requirementCache.Clear();
             foreach (var requirement in requirements)
             {
-                _requirementCache.Add(requirement, new List<char>());
+                _requirementCache.Add(requirement, new List<Tuple<char, bool>>());
             }
 
             var regex = new Regex($"^{pattern}$", RegexOptions.Compiled);
@@ -37,10 +37,22 @@ namespace Game.Scripts
         private bool CheckRequirement(string word, WordRequirement requirement)
         {
             var testedCharacter = word[requirement.Position];
-            if (_requirementCache[requirement].Contains(testedCharacter))
+            var cache = _requirementCache[requirement].FirstOrDefault(t => t.Item1 == testedCharacter);
+            if (cache != null)
+            {
+                return cache.Item2;
+            }
+
+            if (_words.Contains(requirement.Word.Replace('.', testedCharacter)))
+            {
+                _requirementCache[requirement].Add(new Tuple<char, bool>(testedCharacter, true));
+                return true;
+            }
+            else
+            {
+                _requirementCache[requirement].Add(new Tuple<char, bool>(testedCharacter, false));
                 return false;
-            _requirementCache[requirement].Add(testedCharacter);
-            return _words.Contains(requirement.Word.Replace('.', testedCharacter));
+            }
         }
     }
 }
