@@ -14,6 +14,8 @@ namespace Game.Scripts
         public Camera mainCamera;
         public WordList wordList;
         public WinnerPanel winnerPanel;
+        public MainMenuPanel mainMenuPanel;
+        public HelpPanel helpPanel;
         public float panSpeed = 0.05f;
 
         private List<CharacterTile> _tiles = new List<CharacterTile>();
@@ -34,6 +36,9 @@ namespace Game.Scripts
 
         private void Update()
         {
+            if (mainMenuPanel.gameObject.activeSelf || helpPanel.gameObject.activeSelf || winnerPanel.gameObject.activeSelf)
+                return;
+
             HandleCameraDragging();
 
             if (_cameraDragging)
@@ -45,8 +50,7 @@ namespace Game.Scripts
         private void HandleTileSelection()
         {
             var offset = new Vector3(0.5f, 0.5f);
-            var cursorPosition =
-                (Vector2Int) grid.WorldToCell(mainCamera.ScreenToWorldPoint(Input.mousePosition) + offset);
+            var cursorPosition = (Vector2Int) grid.WorldToCell(mainCamera.ScreenToWorldPoint(Input.mousePosition) + offset);
             cursorTile.transform.position = grid.CellToWorld((Vector3Int) cursorPosition);
 
             if (!_dragging && Input.GetMouseButtonDown(0))
@@ -98,8 +102,11 @@ namespace Game.Scripts
                 if (wordLength < 3)
                     return;
 
-                var pattern = string.Empty;
+                var insertPattern = string.Empty;
+                var replacePattern = string.Empty;
+                var insert = false;
                 var currentPosition = startPosition;
+                var originalWord = string.Empty;
                 var originalWordLength = wordLength;
                 var originalStartPosition = startPosition;
 
@@ -116,21 +123,32 @@ namespace Game.Scripts
                     if (tile is null)
                         break;
 
-                    pattern = tile.Character + pattern;
+                    insertPattern = tile.Character + insertPattern;
+                    replacePattern = tile.Character + replacePattern;
                     startPosition = currentPosition;
                     wordLength++;
                 }
 
-                currentPosition = originalStartPosition;
                 // Capture selected tiles
+                currentPosition = originalStartPosition;
+                originalWord = insertPattern;
                 for (var i = 0; i < originalWordLength; i++)
                 {
                     var tile = GetTile(currentPosition);
 
                     if (tile is null)
-                        pattern += '.';
+                    {
+                        originalWord += '.';
+                        insertPattern += '.';
+                        replacePattern += '.';
+                        insert = true;
+                    }
                     else
-                        pattern += tile.Character;
+                    {
+                        originalWord += tile.Character;
+                        insertPattern += tile.Character;
+                        replacePattern += '.';
+                    }
 
                     if (direction == WordDirection.Horizontal)
                         currentPosition += new Vector2Int(1, 0);
@@ -146,7 +164,9 @@ namespace Game.Scripts
                     if (tile is null)
                         break;
 
-                    pattern += tile.Character;
+                    insertPattern += tile.Character;
+                    replacePattern += tile.Character;
+                    originalWord += tile.Character;
                     endPosition = currentPosition;
                     wordLength++;
 
@@ -156,14 +176,68 @@ namespace Game.Scripts
                         currentPosition += new Vector2Int(0, -1);
                 }
 
+                // Gather requirements
+                var requirements = new List<WordRequirement>();
+                currentPosition = startPosition;
+                for (var i = 0; i < wordLength; i++)
+                {
+                    var requirementWord = string.Empty;
+
+                    // Check for tiles before current tile
+                    var currentSubPosition = currentPosition;
+
+                    while (true)
+                    {
+                        if (direction == WordDirection.Vertical)
+                            currentSubPosition += new Vector2Int(-1, 0);
+                        else
+                            currentSubPosition += new Vector2Int(0, 1);
+                        var tile = GetTile(currentSubPosition);
+
+                        if (tile is null)
+                            break;
+
+                        requirementWord = tile.Character + requirementWord;
+                    }
+
+                    requirementWord += '.';
+
+                    // Check for tiles after current tile
+                    currentSubPosition = currentPosition;
+
+                    while (true)
+                    {
+                        if (direction == WordDirection.Vertical)
+                            currentSubPosition += new Vector2Int(1, 0);
+                        else
+                            currentSubPosition += new Vector2Int(0, -1);
+                        var tile = GetTile(currentSubPosition);
+
+                        if (tile is null)
+                            break;
+
+                        requirementWord += tile.Character;
+                    }
+
+                    if (requirementWord.Length > 1)
+                        requirements.Add(new WordRequirement(i, requirementWord));
+
+                    if (direction == WordDirection.Horizontal)
+                        currentPosition += new Vector2Int(1, 0);
+                    else
+                        currentPosition += new Vector2Int(0, -1);
+                }
+
+                var pattern = insert ? insertPattern : replacePattern;
+
                 // Require at least one intersection
                 if (pattern.All(p => p == '.'))
                     return;
-
+                
                 Debug.Log(pattern);
 
                 // Search for a fitting word
-                string word = wordList.GetRandomMatchingWord(pattern);
+                string word = wordList.GetRandomMatchingWord(pattern, originalWord, requirements.ToArray());
 
                 if (word is null)
                     return;
@@ -240,6 +314,18 @@ namespace Game.Scripts
                     ? new Vector2Int(currentPosition.x, currentPosition.y - 1)
                     : new Vector2Int(currentPosition.x + 1, currentPosition.y);
             }
+        }
+
+        public void ResetGame()
+        {
+            _steps = 0;
+            foreach (var tile in _tiles)
+            {
+                Destroy(tile.gameObject);
+            }
+
+            _tiles.Clear();
+            Start();
         }
     }
 }
